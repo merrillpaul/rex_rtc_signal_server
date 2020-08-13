@@ -1,0 +1,31 @@
+{
+  "name": "rex_rtc_signal_server",
+  "version": "1.0.0",
+  "description": "A Signal server to negotiate handshakes for a WebRTC comm",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "serverless deploy",
+    "deploy_prod": "serverless deploy --stage production",
+    "create_domain": "serverless create_domain",
+    "predeploy_prod": "npm i",
+    "predeploy": "npm i",
+    "precreate_domain": "npm i"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.61",
+    "@types/aws-sdk": "^2.7.0",
+    "serverless": "^1.78.1",
+    "serverless-domain-manager": "^4.2.0",
+    "serverless-offline": "^6.5.0",
+    "serverless-webpack": "^5.3.3",
+    "ts-loader": "^8.0.2",
+    "typescript": "^3.9.7",
+    "webpack": "^4.44.1"
+  },
+  "dependencies": {
+    "sanitize-html": "^1.27.3"
+  }
+}

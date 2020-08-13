@@ -1,0 +1,142 @@
+service:
+  name: rex-rtc-signal-server
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stackName: ${self:service}-${self:provider.stage}
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "execute-api:ManageConnections"
+      Resource:
+        - "arn:aws:execute-api:*:*:**/@connections/*"
+    - Effect: Allow
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+        - "dynamodb:BatchGetItem"
+        - "dynamodb:BatchWriteItem"
+        - "dynamodb:Query"
+      Resource:
+        - Fn::GetAtt: [ApplicationDynamoDBTable, Arn]
+        - Fn::Join:
+            - '/'
+            - - Fn::GetAtt: [ApplicationDynamoDBTable, Arn]
+              - '*'
+  environment:
+    APPLICATION_TABLE:
+      Ref: ApplicationDynamoDBTable
+    API_REGION: "${self:provider.region}"  
+
+  websocketsApiName: rex-rtc-signal-server-${self:provider.stage}
+
+  # required for websocket apis
+  # this selects from your payload what your "routeKey" parameter is
+  # from the websocket event types on your function
+  websocketsApiRouteSelectionExpression: $request.body.action
+
+  package:
+  # exclude:
+    # - node_modules/@types/**/*
+  include:
+    - utils/**/*
+    #- node_modules/**/*
+  # excludeDevDependencies: false
+
+
+plugins:
+#  - serverless-websockets-plugin
+  - serverless-webpack
+  - serverless-offline
+  #- serverless-domain-manager
+
+functions:
+  # manage connection and disconnection of clients
+  connectionManager:
+    handler: handler.connectionManager
+    events:
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+
+  # just in case we are getting weird / bad data
+  # we can react to it with a sane response
+  defaultMessages:
+    handler: handler.defaultMessage
+    events:
+      - websocket:
+          route: $default
+
+  # handle chat app messages
+  sendMessage:
+    handler: handler.sendMessage
+    events:
+      - websocket:
+          route: sendMessage
+
+  # Channel Subscriptions
+  channelManager:
+    handler: handler.channelManager
+    events:
+      - websocket:
+          route: subscribeChannel
+      - websocket:
+          route: unsubscribeChannel
+
+  # handle broadcasting all events
+  # we do this by listening the dynamodb table stream for messages or disconnects
+  # could even be done by sub-systems directly to dynamodb
+  broadcast:
+    handler: handler.broadcast
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [ApplicationDynamoDBTable, StreamArn]
+
+resources:
+  Resources:
+    # DynamoDB best practices suggest most applications should only
+    # have a single table. For resources check out the follow links...
+    # https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html
+    # Advanced Design Patterns for DynamoDB - https://www.youtube.com/watch?v=HaEPXoXVf2k
+    ApplicationDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: reverse
+            KeySchema:
+              - AttributeName: sk
+                KeyType: HASH
+              - AttributeName: pk
+                KeyType: RANGE
+            Projection:
+                ProjectionType: ALL
+
+custom:
+  webpack:
+    includeModules: true # enable auto-packing of external modules
+  #customDomain:
+   # domainName: ${self:provider.stage}-rex-rtc-signal-server.qidevteam.com
+    #basePath: ''
+    #stage: ${self:provider.stage}
+    #createRoute53Record: true
