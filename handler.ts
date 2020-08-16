@@ -92,6 +92,9 @@ export const sendMessage: Handler = async (event, context, callback: Callback) =
         const subscriberId = dbClient.parseEntityId(
             subscriber[dbClient.dbConfig.Channel.Connections.Range]
         );
+        if (event.requestContext.connectionId === subscriberId) {
+            return;
+        }
         return wsClient.send(subscriberId, {
             event: "channel_message",
             channelId: body.channelId,
