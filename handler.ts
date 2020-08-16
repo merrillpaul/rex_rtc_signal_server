@@ -149,7 +149,7 @@ export const broadcast: Handler = async (event, context, callback: Callback) => 
                                 {
                                     event: `subscriber_${eventType}`,
                                     channelId,
-
+                                    count: subscribers.length,
                                     // sender of message "from id"
                                     subscriberId: dbClient.parseEntityId(
                                         record.dynamodb.Keys[dbClient.dbConfig.Primary.Range].S
