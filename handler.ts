@@ -70,10 +70,11 @@ export const sendMessage: Handler = async (event, context, callback: Callback) =
         .replace(/[^a-z0-9\s-]/gi, "")
         .trim()
         .replace(/\+s/g, "-");
-    const content = sanitize(body.content, {
+    /*const content = sanitize(body.content, {
         allowedTags: ["ul", "ol", "b", "i", "em", "strike", "pre", "strong", "li"],
         allowedAttributes: {}
-    });
+    });*/
+    const content = body.content;
 
     // save message in database for later
     const item = await dbClient.dynamodbClient.put({
